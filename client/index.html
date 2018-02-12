@@ -2,12 +2,71 @@
 <html lang="en">
 <head>
     <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
     <script type="text/babel" >
         "use strict";
     
+		let drawableObjects = {};
+		let canvas, ctx, socket;
+		
+		const drawCanvas = () => {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			
+			let itemsToDraw = Object.keys(drawableObjects);
+			
+			for(let i = 0; i < itemsToDraw.length; i++){
+				const item = drawableObjects[itemsToDraw[i]];
+				
+				ctx.save();
+				ctx.fillStyle = item.color || "black";
+				ctx.fillRect(item.x, item.y, item.w, item.h);
+				ctx.restore();
+			}
+		};
+		
+		const attachSocketEvents = (sock) => {
+			sock.on('addObject', (data) => {
+				drawableObjects[data.time] = data.object;
+				drawCanvas();
+			});
+		};
+		
+		const sendNewObject = (offsetTime) => {
+		
+			let x = Math.floor(Math.random() * 350);
+			let y = Math.floor(Math.random() * 350);
+			
+			//Allow the time to be offset if necessary
+			let time = new Date().getTime() + offsetTime;
+			let message = {x, y, w: 50, h: 50};
+			
+			socket.emit('addObject', {time, object: message});
+		};
+		
+		const init = () => {
+			socket = io.connect();
+			attachSocketEvents(socket);
+			
+			canvas = document.querySelector("#viewport");
+			ctx = canvas.getContext('2d');
+			
+			let time = new Date().getTime();
+			drawableObjects[0] = {x: 50, y: 50, w: 50, h: 50};
+			
+			drawCanvas();
+			
+			sendNewObject(1);
+			
+			setInterval(() => {
+				sendNewObject(0);
+			}, 1000);
+		};
+		
+		window.onload = init;
+	
     </script>
 </head>
 <body>
-
+	<canvas width="400" height="400" id="viewport"></canvas>
 </body>
 </html>
